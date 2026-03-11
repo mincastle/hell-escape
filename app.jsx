@@ -48,7 +48,7 @@ const WEAPONS = [
     id: "gun",
     emoji: "🔫",
     label: "총",
-    damageMin: 10, damageMax: 20, comboBonus: 0.5,
+    damageMin: 10, damageMax: 20, comboBonus: 1.0,
     hitWords: ["빵야!", "탕!!", "구멍!", "저격!", "헤드샷!", "빵!!", "터졌다!"],
     shockwaveColor: "#e8e8e8",
     flashBg: "radial-gradient(ellipse at center,#0a0a1a 0%,#060610 60%)",
@@ -144,6 +144,7 @@ class AudioEngine {
   }
 
   _playHammer(combo) {
+    if (!this.ctx) return;
     const now = this.ctx.currentTime;
     const freq = 80 + Math.min(combo * 10, 100);
     const osc = this.ctx.createOscillator();
@@ -165,6 +166,7 @@ class AudioEngine {
   }
 
   _playKnife(combo) {
+    if (!this.ctx) return;
     const now = this.ctx.currentTime;
     const baseFreq = 800 + Math.min(combo * 50, 400);
     [0, 0.025, 0.05].forEach((t) => {
@@ -181,6 +183,7 @@ class AudioEngine {
   }
 
   _playGun(combo) {
+    if (!this.ctx) return;
     const now = this.ctx.currentTime;
     // 임펄스 노이즈 (총성)
     const buf = this.ctx.createBuffer(1, this.ctx.sampleRate * 0.08, this.ctx.sampleRate);
@@ -200,6 +203,7 @@ class AudioEngine {
   }
 
   _playFire(combo) {
+    if (!this.ctx) return;
     const now = this.ctx.currentTime;
     const dur = 0.15 + Math.min(combo * 0.02, 0.12);
     // 치직 노이즈
@@ -260,6 +264,15 @@ const vibrate = (pattern) => {
 
 // ── Leaderboard (localStorage) ────────────────────
 const LB_KEY = "hellgate_leaderboard_v3";
+const LB_KEY_V2 = "hellgate_leaderboard_v2";
+const migrateLeaderboard = () => {
+  try {
+    if (localStorage.getItem(LB_KEY)) return; // 이미 v3 있으면 스킵
+    const v2 = JSON.parse(localStorage.getItem(LB_KEY_V2));
+    if (v2?.length) localStorage.setItem(LB_KEY, JSON.stringify(v2));
+  } catch { /* 무시 */ }
+};
+migrateLeaderboard();
 const getLeaderboard = () => { try { return JSON.parse(localStorage.getItem(LB_KEY)) || []; } catch { return []; } };
 const saveScore = (entry) => {
   const lb = getLeaderboard();
@@ -361,7 +374,6 @@ export default function App() {
     audioEngine.init();
     audioEngine.startBGM();
     setActiveWeapon(weapon);
-    activeWeaponRef.current = weapon;
     setVillainList(customVillains); setCurrentIndex(0);
     loadVillain(customVillains[0]);
     setStress(100); setTotalHits(0); setMaxCombo(0);
