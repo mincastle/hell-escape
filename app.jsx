@@ -310,6 +310,95 @@ function Shockwave({ x, y, big, color }) {
   );
 }
 
+// ── DamageOverlay ─────────────────────────────────
+const HAMMER_MARKS = [
+  [],
+  [{ x: -38, y: -22, s: "💜", r: -15 }],
+  [{ x: -38, y: -22, s: "💜", r: -15 }, { x: 32, y: 8, s: "💜", r: 10 }, { x: -8, y: -48, s: "🩹", r: 5 }],
+  [{ x: -38, y: -22, s: "💜", r: -15 }, { x: 32, y: 8, s: "💜", r: 10 }, { x: -8, y: -48, s: "💥", r: 0 }, { x: 36, y: -30, s: "💜", r: 20 }],
+  [{ x: -38, y: -22, s: "💜", r: -15 }, { x: 32, y: 8, s: "💜", r: 10 }, { x: -8, y: -48, s: "💥", r: 0 }, { x: 36, y: -30, s: "💥", r: 20 }, { x: 0, y: 22, s: "💜", r: -5 }],
+];
+const KNIFE_MARKS = [
+  [],
+  [{ x: 22, y: -28, s: "🩸", r: 0 }],
+  [{ x: 22, y: -28, s: "🩸", r: 0 }, { x: -26, y: 12, s: "🩸", r: 0 }],
+  [{ x: 22, y: -28, s: "🩸", r: 0 }, { x: -26, y: 12, s: "🩸", r: 0 }, { x: 10, y: 22, s: "🩸", r: 0 }, { x: -12, y: -42, s: "🩸", r: 0 }],
+  [{ x: 22, y: -28, s: "🩸", r: 0 }, { x: -26, y: 12, s: "🩸", r: 0 }, { x: 10, y: 22, s: "🩸", r: 0 }, { x: -12, y: -42, s: "🩸", r: 0 }, { x: 32, y: 2, s: "🩸", r: 0 }, { x: -32, y: -18, s: "🩸", r: 0 }],
+];
+const FIRE_MARKS = [
+  [],
+  [{ x: -18, y: 42, s: "🔥", r: 0 }],
+  [{ x: -18, y: 42, s: "🔥", r: -10 }, { x: 18, y: 42, s: "🔥", r: 10 }],
+  [{ x: -28, y: 32, s: "🔥", r: -10 }, { x: 0, y: 46, s: "🔥", r: 0 }, { x: 28, y: 32, s: "🔥", r: 10 }, { x: -8, y: 18, s: "✨", r: 0 }],
+  [{ x: -28, y: 32, s: "🔥", r: -10 }, { x: 0, y: 46, s: "🔥", r: 0 }, { x: 28, y: 32, s: "🔥", r: 10 }, { x: -20, y: 14, s: "🌫️", r: 0 }, { x: 20, y: 14, s: "🌫️", r: 0 }],
+];
+
+function DamageOverlay({ weaponId, stage, bulletHoles }) {
+  const base = { position: "absolute", inset: 0, pointerEvents: "none", zIndex: 2 };
+  const dot = (item, i) => (
+    <span key={i} style={{
+      position: "absolute",
+      left: `calc(50% + ${item.x}px)`, top: `calc(50% + ${item.y}px)`,
+      fontSize: weaponId === "knife" ? "1rem" : "1.15rem",
+      transform: `translate(-50%, -50%) rotate(${item.r}deg)`,
+      lineHeight: 1,
+    }}>{item.s}</span>
+  );
+
+  if (weaponId === "hammer" && stage > 0)
+    return <div style={base}>{HAMMER_MARKS[stage].map(dot)}</div>;
+
+  if (weaponId === "knife" && stage > 0)
+    return <div style={base}>{KNIFE_MARKS[stage].map(dot)}</div>;
+
+  if (weaponId === "gun" && bulletHoles.length > 0)
+    return (
+      <div style={base}>
+        {bulletHoles.map((h, i) => (
+          <span key={i} style={{
+            position: "absolute",
+            left: `calc(50% + ${h.x}px)`, top: `calc(50% + ${h.y}px)`,
+            fontSize: "0.85rem", transform: "translate(-50%, -50%)",
+            filter: "drop-shadow(0 0 2px #000)",
+          }}>⚫</span>
+        ))}
+      </div>
+    );
+
+  if (weaponId === "fire" && stage > 0)
+    return <div style={base}>{FIRE_MARKS[stage].map(dot)}</div>;
+
+  return null;
+}
+
+// 무기·단계별 이모지 필터
+const STAGE_FILTERS = {
+  hammer: [
+    "", "drop-shadow(0 0 22px #9333ea66)",
+    "drop-shadow(0 0 32px #9333ea99) brightness(0.88)",
+    "drop-shadow(0 0 44px #9333eabb) brightness(0.78) saturate(1.4)",
+    "drop-shadow(0 0 56px #9333ea) brightness(0.65) saturate(2)",
+  ],
+  knife: [
+    "", "drop-shadow(0 0 20px #ff4d6d66) brightness(0.95)",
+    "drop-shadow(0 0 28px #ff4d6d99) brightness(0.9) saturate(1.3)",
+    "drop-shadow(0 0 40px #ff4d6dcc) brightness(0.82) saturate(1.8)",
+    "drop-shadow(0 0 50px #ff4d6d) brightness(0.72) saturate(2.5)",
+  ],
+  gun: [
+    "", "brightness(0.95)",
+    "brightness(0.88) contrast(1.1)",
+    "brightness(0.78) contrast(1.2) saturate(0.7)",
+    "brightness(0.62) contrast(1.4) saturate(0.4) grayscale(0.3)",
+  ],
+  fire: [
+    "", "drop-shadow(0 0 20px #ff950066) brightness(1.06)",
+    "drop-shadow(0 0 30px #ff9500aa) brightness(1.1) saturate(1.3)",
+    "drop-shadow(0 0 44px #ff6600cc) brightness(1.0) saturate(1.8) sepia(0.2)",
+    "drop-shadow(0 0 56px #ff4400) brightness(0.85) saturate(2) sepia(0.5)",
+  ],
+};
+
 // ════════════════════════════════════════════════════
 //  MAIN APP
 // ════════════════════════════════════════════════════
@@ -351,8 +440,11 @@ export default function App() {
   const sidRef = useRef(0);
   const activeWeaponRef = useRef(WEAPONS[0]);
 
+  const [bulletHoles, setBulletHoles] = useState([]);
+
   const hpPct = (hp / 100) * 100;
   const skillPct = skillGauge;
+  const damageStage = hp >= 75 ? 0 : hp >= 50 ? 1 : hp >= 25 ? 2 : hp >= 10 ? 3 : 4;
 
   useEffect(() => {
     audioEngine.setEnabled(soundOn);
@@ -366,6 +458,7 @@ export default function App() {
   const loadVillain = (v) => {
     setCurrentVillain(v); setHp(100); setCombo(0);
     setDefeated(false); setVillainEmotion(v.emoji); setSkillGauge(0); setUltimateReady(false);
+    setBulletHoles([]);
   };
 
   const startGame = () => {
@@ -431,6 +524,17 @@ export default function App() {
       ? `${newCombo} COMBO!!`
       : weapon.hitWords[Math.floor(Math.random() * weapon.hitWords.length)];
     addParticle(x, y, word, color);
+
+    // 총: 탄흔 누적 (최대 10개)
+    if (weapon.id === "gun") {
+      setBulletHoles(holes => {
+        if (holes.length >= 10) return holes;
+        return [...holes, {
+          x: Math.floor((Math.random() - 0.5) * 110),
+          y: Math.floor((Math.random() - 0.5) * 110),
+        }];
+      });
+    }
 
     // 칼: 다단 타격 시 추가 파티클 2개
     if (weapon.id === "knife" && hits > 1) {
@@ -754,7 +858,7 @@ export default function App() {
         .arena { flex:1; display:flex; align-items:center; justify-content:center; position:relative; width:100%; }
         .vbtn { background:none; border:none; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:8px; padding:24px; border-radius:50%; animation:${isShaking ? "shake .28s ease" : "none"}; transition:transform .05s; }
         .vbtn:active { transform:scale(.9); }
-        .vemoji { font-size:7.5rem; display:block; filter:drop-shadow(0 0 28px ${activeWeapon.shockwaveColor}55); animation:${defeated ? "defeated 1.2s forwards" : ultimateAnim ? "ultimate .6s ease" : "none"}; }
+        .vemoji { font-size:7.5rem; display:block; filter:${(STAGE_FILTERS[activeWeapon.id] || [])[damageStage] || `drop-shadow(0 0 28px ${activeWeapon.shockwaveColor}55)`}; animation:${defeated ? "defeated 1.2s forwards" : ultimateAnim ? "ultimate .6s ease" : "none"}; transition:filter .3s ease; }
         .vnamebadge { background:#ff4d6d18; border:2px solid #ff4d6d44; border-radius:20px; padding:5px 18px; color:#ff9500; font-family:'Black Han Sans',sans-serif; font-size:.95rem; white-space:nowrap; }
         .vtraitbadge { color:#444; font-size:.75rem; }
         .combo { position:absolute; top:16px; right:16px; font-family:'Black Han Sans',sans-serif; font-size:${combo > 10 ? "2.2rem" : "1.5rem"}; color:${combo > 10 ? "#ffcc00" : "#ff9500"}; text-shadow:${combo > 10 ? "0 0 24px #ffcc00" : "0 0 12px #ff9500"}; opacity:${combo > 1 ? 1 : 0}; transition:all .12s; }
@@ -797,7 +901,10 @@ export default function App() {
           <div className="combo">{combo > 1 ? `${combo} HIT!` : ""}</div>
 
           <button className="vbtn" onClick={handleHit}>
-            <span className="vemoji">{villainEmotion}</span>
+            <div style={{ position: "relative", display: "inline-block", lineHeight: 1 }}>
+              <span className="vemoji">{villainEmotion}</span>
+              <DamageOverlay weaponId={activeWeapon.id} stage={damageStage} bulletHoles={bulletHoles} />
+            </div>
             <div className="vnamebadge">{currentVillain?.name}</div>
             <div className="vtraitbadge">{currentVillain?.trait}</div>
           </button>

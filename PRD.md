@@ -283,21 +283,21 @@
 ### Phase 1 — 무기 시스템 기반 구축
 > 가장 핵심 변경. 이후 Phase의 기반이 됨.
 
-- [ ] `WEAPONS` 상수 정의 (id, emoji, label, damage, hitWords, vibration)
-- [ ] 설정 화면에 무기 선택 UI 추가 (4-grid)
-- [ ] `selectedWeapon` state 추가, `startGame()`에 전달
-- [ ] `handleHit`에 무기별 데미지·사운드·진동·타격 문구 분기
-- [ ] `AudioEngine`에 무기별 타격음 메서드 추가 (`playHitWeapon(weapon, combo)`)
-- [ ] 충격파·배경 플래시 색상 무기별 분기
+- [v] `WEAPONS` 상수 정의 (id, emoji, label, damage, hitWords, vibration)
+- [v] 설정 화면에 무기 선택 UI 추가 (4-grid)
+- [v] `selectedWeapon` state 추가, `startGame()`에 전달
+- [v] `handleHit`에 무기별 데미지·사운드·진동·타격 문구 분기
+- [v] `AudioEngine`에 무기별 타격음 메서드 추가 (`playHitWeapon(weapon, combo)`)
+- [v] 충격파·배경 플래시 색상 무기별 분기
 
 ### Phase 2 — 피해 누적 시각화
 > Phase 1 완료 후 진행.
 
-- [ ] `damageStage` state 추가 (0~4, HP 구간별 자동 갱신)
-- [ ] 빌런 표시 영역을 `position: relative` 컨테이너로 감싸기
-- [ ] 무기별 × 단계별 오버레이 CSS 클래스 정의 (망치/칼/총/불 각 4단계)
-- [ ] `loadVillain()` 호출 시 `damageStage` 초기화
-- [ ] 총 무기: 탄흔(⚫) 누적 렌더링 (배열 state)
+- [x] `damageStage` state 추가 (0~4, HP 구간별 자동 갱신)
+- [x] 빌런 표시 영역을 `position: relative` 컨테이너로 감싸기
+- [x] 무기별 × 단계별 오버레이 CSS 클래스 정의 (망치/칼/총/불 각 4단계)
+- [x] `loadVillain()` 호출 시 `damageStage` 초기화
+- [x] 총 무기: 탄흔(⚫) 누적 렌더링 (배열 state)
 
 ### Phase 3 — 선택 이벤트 시스템
 > Phase 1 완료 후 진행 (Phase 2와 병렬 가능).
