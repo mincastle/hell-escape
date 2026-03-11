@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 
 // ═══════════════════════════════════════════════════
-//  직장 헬게이트 탈출 v2.0 — FULL EDITION
+//  직장 헬게이트 탈출 v3.0 — WEAPON EDITION
 // ═══════════════════════════════════════════════════
 
 const VILLAIN_PRESETS = [
@@ -12,7 +12,60 @@ const VILLAIN_PRESETS = [
   { emoji: "🙄", label: "책임 전가러" },
 ];
 
-const HIT_WORDS = ["퍽!!", "쾅!!", "받아랏!", "왜이래?!", "야근싫어!", "BOOM!!", "OUT!", "꺼져!", "빵야!", "으악!"];
+// ── 무기 정의 ──────────────────────────────────────
+const WEAPONS = [
+  {
+    id: "fist",
+    emoji: "👊",
+    label: "주먹",
+    damageMin: 4, damageMax: 11, comboBonus: 1.5,
+    hitWords: ["퍽!!", "쾅!!", "받아랏!", "왜이래?!", "야근싫어!", "BOOM!!", "OUT!", "꺼져!"],
+    shockwaveColor: "#ff4d6d",
+    flashBg: "radial-gradient(ellipse at center,#3a0010 0%,#060610 60%)",
+    vibration: [20], comboVibration: [30, 10, 30],
+  },
+  {
+    id: "hammer",
+    emoji: "🔨",
+    label: "망치",
+    damageMin: 8, damageMax: 18, comboBonus: 2,
+    hitWords: ["쾅!!!", "박살!", "뼈가!", "으드득!", "작살!", "으스러져!", "뭉개져!"],
+    shockwaveColor: "#ffcc00",
+    flashBg: "radial-gradient(ellipse at center,#2a1500 0%,#060610 60%)",
+    vibration: [50, 20, 30], comboVibration: [80, 20, 60, 20, 40],
+  },
+  {
+    id: "knife",
+    emoji: "🔪",
+    label: "칼",
+    damageMin: 3, damageMax: 7, comboBonus: 1, multiHit: 3,
+    hitWords: ["스읏!", "찌릿!", "베었다!", "피다!", "살점!", "아리다!", "째져!"],
+    shockwaveColor: "#ff4d6d",
+    flashBg: "radial-gradient(ellipse at center,#3a0010 0%,#060610 60%)",
+    vibration: [10, 10, 10], comboVibration: [15, 8, 15, 8, 15],
+  },
+  {
+    id: "gun",
+    emoji: "🔫",
+    label: "총",
+    damageMin: 10, damageMax: 20, comboBonus: 0.5,
+    hitWords: ["빵야!", "탕!!", "구멍!", "저격!", "헤드샷!", "빵!!", "터졌다!"],
+    shockwaveColor: "#e8e8e8",
+    flashBg: "radial-gradient(ellipse at center,#0a0a1a 0%,#060610 60%)",
+    vibration: [15], comboVibration: [20, 10, 20],
+  },
+  {
+    id: "fire",
+    emoji: "🔥",
+    label: "불",
+    damageMin: 5, damageMax: 10, comboBonus: 3,
+    hitWords: ["활활!", "타올라!", "불이야!", "재가돼라!", "뜨겁지?!", "타버려!", "불꽃!"],
+    shockwaveColor: "#ff9500",
+    flashBg: "radial-gradient(ellipse at center,#2a1000 0%,#060610 60%)",
+    vibration: [30, 10, 20, 10], comboVibration: [40, 15, 30, 15, 20],
+  },
+];
+
 const PARTICLE_COLORS = ["#ff4d6d", "#ff9500", "#ffcc00", "#06d6a0", "#38bdf8", "#f472b6", "#a78bfa"];
 
 // ── Web Audio Engine ──────────────────────────────
@@ -48,7 +101,6 @@ class AudioEngine {
       env.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
       osc.connect(env); env.connect(this.bgGain);
       osc.start(now); osc.stop(now + 0.2);
-      // hi-hat
       const buf = this.ctx.createBuffer(1, this.ctx.sampleRate * 0.05, this.ctx.sampleRate);
       const d = buf.getChannelData(0);
       for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
@@ -60,6 +112,8 @@ class AudioEngine {
     this._beatInterval = setInterval(playBeat, 220);
   }
   stopBGM() { clearInterval(this._beatInterval); }
+
+  // 기본 주먹 타격음
   playHit(combo = 1) {
     if (!this.ctx || !this.enabled) return;
     const now = this.ctx.currentTime;
@@ -76,6 +130,97 @@ class AudioEngine {
       osc.start(now + t); osc.stop(now + t + 0.2);
     });
   }
+
+  // 무기별 타격음 디스패처
+  playHitWeapon(weaponId, combo = 1) {
+    if (!this.ctx || !this.enabled) return;
+    switch (weaponId) {
+      case "hammer": this._playHammer(combo); break;
+      case "knife":  this._playKnife(combo);  break;
+      case "gun":    this._playGun(combo);    break;
+      case "fire":   this._playFire(combo);   break;
+      default:       this.playHit(combo);     break;
+    }
+  }
+
+  _playHammer(combo) {
+    const now = this.ctx.currentTime;
+    const freq = 80 + Math.min(combo * 10, 100);
+    const osc = this.ctx.createOscillator();
+    const env = this.ctx.createGain();
+    osc.type = "sawtooth";
+    osc.frequency.setValueAtTime(freq * 2.5, now);
+    osc.frequency.exponentialRampToValueAtTime(freq * 0.3, now + 0.3);
+    env.gain.setValueAtTime(0.7, now);
+    env.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+    osc.connect(env); env.connect(this.sfxGain);
+    osc.start(now); osc.stop(now + 0.4);
+    // 충격 노이즈
+    const buf = this.ctx.createBuffer(1, this.ctx.sampleRate * 0.12, this.ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 2);
+    const src = this.ctx.createBufferSource();
+    const ng = this.ctx.createGain(); ng.gain.value = 0.45;
+    src.buffer = buf; src.connect(ng); ng.connect(this.sfxGain); src.start(now);
+  }
+
+  _playKnife(combo) {
+    const now = this.ctx.currentTime;
+    const baseFreq = 800 + Math.min(combo * 50, 400);
+    [0, 0.025, 0.05].forEach((t) => {
+      const osc = this.ctx.createOscillator();
+      const env = this.ctx.createGain();
+      osc.type = "square";
+      osc.frequency.setValueAtTime(baseFreq, now + t);
+      osc.frequency.exponentialRampToValueAtTime(baseFreq * 0.4, now + t + 0.09);
+      env.gain.setValueAtTime(0.35, now + t);
+      env.gain.exponentialRampToValueAtTime(0.001, now + t + 0.1);
+      osc.connect(env); env.connect(this.sfxGain);
+      osc.start(now + t); osc.stop(now + t + 0.12);
+    });
+  }
+
+  _playGun(combo) {
+    const now = this.ctx.currentTime;
+    // 임펄스 노이즈 (총성)
+    const buf = this.ctx.createBuffer(1, this.ctx.sampleRate * 0.08, this.ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 1.5);
+    const src = this.ctx.createBufferSource();
+    const ng = this.ctx.createGain(); ng.gain.value = 0.65;
+    src.buffer = buf; src.connect(ng); ng.connect(this.sfxGain); src.start(now);
+    // 클릭 톤
+    const osc = this.ctx.createOscillator();
+    const env = this.ctx.createGain();
+    osc.type = "square"; osc.frequency.value = 180 + combo * 10;
+    env.gain.setValueAtTime(0.4, now);
+    env.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+    osc.connect(env); env.connect(this.sfxGain);
+    osc.start(now); osc.stop(now + 0.06);
+  }
+
+  _playFire(combo) {
+    const now = this.ctx.currentTime;
+    const dur = 0.15 + Math.min(combo * 0.02, 0.12);
+    // 치직 노이즈
+    const buf = this.ctx.createBuffer(1, this.ctx.sampleRate * dur, this.ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length) * 0.6;
+    const src = this.ctx.createBufferSource();
+    const ng = this.ctx.createGain(); ng.gain.value = 0.5;
+    src.buffer = buf; src.connect(ng); ng.connect(this.sfxGain); src.start(now);
+    // 휘이익
+    const osc = this.ctx.createOscillator();
+    const env = this.ctx.createGain();
+    osc.type = "sawtooth";
+    osc.frequency.setValueAtTime(350 + combo * 20, now);
+    osc.frequency.exponentialRampToValueAtTime(100, now + dur);
+    env.gain.setValueAtTime(0.25, now);
+    env.gain.exponentialRampToValueAtTime(0.001, now + dur);
+    osc.connect(env); env.connect(this.sfxGain);
+    osc.start(now); osc.stop(now + dur + 0.05);
+  }
+
   playUltimate() {
     if (!this.ctx || !this.enabled) return;
     const now = this.ctx.currentTime;
@@ -114,7 +259,7 @@ const vibrate = (pattern) => {
 };
 
 // ── Leaderboard (localStorage) ────────────────────
-const LB_KEY = "hellgate_leaderboard_v2";
+const LB_KEY = "hellgate_leaderboard_v3";
 const getLeaderboard = () => { try { return JSON.parse(localStorage.getItem(LB_KEY)) || []; } catch { return []; } };
 const saveScore = (entry) => {
   const lb = getLeaderboard();
@@ -139,12 +284,13 @@ function FloatingText({ x, y, text, color }) {
   );
 }
 
-function Shockwave({ x, y, big }) {
+function Shockwave({ x, y, big, color }) {
+  const c = color || (big ? "#ffcc00" : "#ff4d6d");
   return (
     <div style={{
       position: "fixed", left: x - (big ? 100 : 60), top: y - (big ? 100 : 60),
       width: big ? 200 : 120, height: big ? 200 : 120, borderRadius: "50%",
-      border: `${big ? 4 : 2}px solid ${big ? "#ffcc00" : "#ff4d6d"}`,
+      border: `${big ? 4 : 2}px solid ${c}`,
       pointerEvents: "none", zIndex: 9998,
       animation: `shockwave ${big ? "0.7" : "0.45"}s ease-out forwards`,
     }} />
@@ -160,11 +306,13 @@ export default function App() {
   const [villainTrait, setVillainTrait] = useState("");
   const [selectedPreset, setSelectedPreset] = useState(null);
   const [customVillains, setCustomVillains] = useState([]);
+  const [selectedWeaponId, setSelectedWeaponId] = useState("fist");
 
   // game state
   const [villainList, setVillainList] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [currentVillain, setCurrentVillain] = useState(null);
+  const [activeWeapon, setActiveWeapon] = useState(WEAPONS[0]);
   const [hp, setHp] = useState(100);
   const [stress, setStress] = useState(100);
   const [combo, setCombo] = useState(0);
@@ -188,14 +336,19 @@ export default function App() {
   const comboTimerRef = useRef(null);
   const pidRef = useRef(0);
   const sidRef = useRef(0);
+  const activeWeaponRef = useRef(WEAPONS[0]);
 
   const hpPct = (hp / 100) * 100;
   const skillPct = skillGauge;
 
-  // toggle sound
   useEffect(() => {
     audioEngine.setEnabled(soundOn);
   }, [soundOn]);
+
+  // activeWeapon ref를 항상 최신 값으로 유지
+  useEffect(() => {
+    activeWeaponRef.current = activeWeapon;
+  }, [activeWeapon]);
 
   const loadVillain = (v) => {
     setCurrentVillain(v); setHp(100); setCombo(0);
@@ -204,8 +357,11 @@ export default function App() {
 
   const startGame = () => {
     if (customVillains.length === 0) return;
+    const weapon = WEAPONS.find(w => w.id === selectedWeaponId) || WEAPONS[0];
     audioEngine.init();
     audioEngine.startBGM();
+    setActiveWeapon(weapon);
+    activeWeaponRef.current = weapon;
     setVillainList(customVillains); setCurrentIndex(0);
     loadVillain(customVillains[0]);
     setStress(100); setTotalHits(0); setMaxCombo(0);
@@ -217,9 +373,10 @@ export default function App() {
     setParticles(p => [...p, { id, x: x + (Math.random() - 0.5) * 100, y: y - 20 + (Math.random() - 0.5) * 50, text, color }]);
     setTimeout(() => setParticles(p => p.filter(i => i.id !== id)), 900);
   };
-  const addShockwave = (x, y, big = false) => {
+
+  const addShockwave = (x, y, big = false, color) => {
     const id = ++sidRef.current;
-    setShockwaves(p => [...p, { id, x, y, big }]);
+    setShockwaves(p => [...p, { id, x, y, big, color }]);
     setTimeout(() => setShockwaves(p => p.filter(i => i.id !== id)), 700);
   };
 
@@ -229,34 +386,47 @@ export default function App() {
     const x = (e.clientX || e.touches?.[0]?.clientX) ?? rect.left + rect.width / 2;
     const y = (e.clientY || e.touches?.[0]?.clientY) ?? rect.top + rect.height / 2;
 
+    const weapon = activeWeaponRef.current;
+
     const newCombo = combo + 1;
     setCombo(newCombo);
     setMaxCombo(m => Math.max(m, newCombo));
     if (comboTimerRef.current) clearTimeout(comboTimerRef.current);
     comboTimerRef.current = setTimeout(() => setCombo(0), 1600);
 
-    const dmg = Math.floor(Math.random() * 7 + 4) + (newCombo > 5 ? newCombo * 1.5 : 0);
+    // 무기별 데미지 계산
+    const hits = weapon.multiHit || 1;
+    const baseDmg = Math.floor(Math.random() * (weapon.damageMax - weapon.damageMin + 1) + weapon.damageMin);
+    const comboDmg = newCombo > 5 ? Math.floor(newCombo * weapon.comboBonus) : 0;
+    const dmg = (baseDmg + comboDmg) * hits;
+
     const newHp = Math.max(0, hp - dmg);
     setHp(newHp);
     setTotalHits(h => h + 1);
     setStress(s => Math.max(0, s - Math.floor(Math.random() * 4 + 2)));
 
-    // skill gauge
     setSkillGauge(g => {
       const ng = Math.min(100, g + (newCombo > 3 ? 8 : 5));
       if (ng >= 100) setUltimateReady(true);
       return ng;
     });
 
-    audioEngine.playHit(newCombo);
-    vibrate(newCombo > 5 ? [30, 10, 30] : [20]);
+    audioEngine.playHitWeapon(weapon.id, newCombo);
+    vibrate(newCombo > 5 ? weapon.comboVibration : weapon.vibration);
 
     const color = PARTICLE_COLORS[Math.floor(Math.random() * PARTICLE_COLORS.length)];
     const word = newCombo > 7
       ? `${newCombo} COMBO!!`
-      : HIT_WORDS[Math.floor(Math.random() * HIT_WORDS.length)];
+      : weapon.hitWords[Math.floor(Math.random() * weapon.hitWords.length)];
     addParticle(x, y, word, color);
-    addShockwave(x, y);
+
+    // 칼: 다단 타격 시 추가 파티클 2개
+    if (weapon.id === "knife" && hits > 1) {
+      setTimeout(() => addParticle(x + 20, y - 15, weapon.hitWords[Math.floor(Math.random() * weapon.hitWords.length)], "#ff4d6d"), 60);
+      setTimeout(() => addParticle(x - 20, y - 30, weapon.hitWords[Math.floor(Math.random() * weapon.hitWords.length)], "#f472b6"), 120);
+    }
+
+    addShockwave(x, y, false, weapon.shockwaveColor);
     setIsShaking(true); setBgFlash(true);
     setTimeout(() => setIsShaking(false), 280);
     setTimeout(() => setBgFlash(false), 120);
@@ -291,7 +461,7 @@ export default function App() {
     setUltimateAnim(true);
     audioEngine.playUltimate();
     vibrate([100, 50, 100, 50, 200]);
-    addShockwave(window.innerWidth / 2, window.innerHeight / 2, true);
+    addShockwave(window.innerWidth / 2, window.innerHeight / 2, true, activeWeapon.shockwaveColor);
     addParticle(window.innerWidth / 2, window.innerHeight / 2, "💥 필살기!!", "#ffcc00");
     const dmg = 40 + Math.floor(Math.random() * 20);
     setHp(h => {
@@ -309,7 +479,11 @@ export default function App() {
 
   const submitScore = () => {
     const name = playerName.trim() || "익명의 직장인";
-    saveScore({ name, score: finalScore, combo: maxCombo, hits: totalHits, date: new Date().toLocaleDateString("ko-KR") });
+    saveScore({
+      name, score: finalScore, combo: maxCombo, hits: totalHits,
+      weapon: activeWeapon.emoji,
+      date: new Date().toLocaleDateString("ko-KR"),
+    });
     setLeaderboard(getLeaderboard());
     setShowLB(true);
   };
@@ -331,6 +505,11 @@ export default function App() {
           .pb.on { border-color:#ff4d6d; background:#2a0018; box-shadow:0 0 16px #ff4d6d44; }
           .pb .e { font-size:1.6rem; display:block; }
           .pb .l { font-size:0.58rem; color:#888; margin-top:2px; }
+          .wgrid { display:grid; grid-template-columns:repeat(5,1fr); gap:8px; width:100%; max-width:400px; margin-bottom:20px; }
+          .wb { background:#111125; border:2px solid #222; border-radius:12px; padding:10px 4px; cursor:pointer; text-align:center; transition:all .2s; color:#fff; }
+          .wb.on { border-color:#ffcc00; background:#1a1400; box-shadow:0 0 16px #ffcc0044; }
+          .wb .e { font-size:1.6rem; display:block; }
+          .wb .l { font-size:0.58rem; color:#888; margin-top:2px; }
           .irow { width:100%; max-width:400px; display:flex; flex-direction:column; gap:10px; margin-bottom:12px; }
           .gi { background:#111125; border:2px solid #222; border-radius:12px; padding:13px 16px; color:#fff; font-size:0.95rem; font-family:'Noto Sans KR',sans-serif; outline:none; transition:border-color .2s; }
           .gi:focus { border-color:#ff4d6d; }
@@ -364,11 +543,21 @@ export default function App() {
 
         <div className="s">
           <div className="logo">직장<br/>헬게이트 탈출</div>
-          <div className="logo-sub">v2.0 — STRESS BUSTER EDITION</div>
+          <div className="logo-sub">v3.0 — WEAPON EDITION</div>
 
           <div className="lbl">▸ 플레이어 이름</div>
           <div className="nameinput-wrap">
             <input className="nibox" placeholder="닉네임 입력 (리더보드 등록용)" value={playerName} onChange={e => setPlayerName(e.target.value)} />
+          </div>
+
+          <div className="lbl">▸ 무기 선택</div>
+          <div className="wgrid">
+            {WEAPONS.map(w => (
+              <button key={w.id} className={`wb ${selectedWeaponId === w.id ? "on" : ""}`}
+                onClick={() => setSelectedWeaponId(w.id)}>
+                <span className="e">{w.emoji}</span><span className="l">{w.label}</span>
+              </button>
+            ))}
           </div>
 
           <div className="lbl">▸ 빌런 유형</div>
@@ -384,7 +573,7 @@ export default function App() {
           <div className="lbl">▸ 빌런 정보</div>
           <div className="irow">
             <input className="gi" placeholder="빌런 이름 (예: 김부장, 박과장)" value={villainName}
-              onChange={e => setVillainName(e.target.value)} onKeyDown={e => e.key === "Enter" && (() => { if (!villainName.trim() && !selectedPreset) return; setCustomVillains(p => [...p, { name: villainName.trim() || selectedPreset?.label || "빌런", emoji: selectedPreset?.emoji || "😤", trait: villainTrait.trim() || "그냥 나쁜놈", id: Date.now() }]); setVillainName(""); setVillainTrait(""); setSelectedPreset(null); })()} />
+              onChange={e => setVillainName(e.target.value)} />
             <input className="gi" placeholder="특징 (예: 항상 야근 강요, 뒤통수의 달인)" value={villainTrait}
               onChange={e => setVillainTrait(e.target.value)} />
           </div>
@@ -409,7 +598,9 @@ export default function App() {
             </div>
           </>}
 
-          <button className="startbtn" disabled={customVillains.length === 0} onClick={startGame}>⚡ 게임 시작 ⚡</button>
+          <button className="startbtn" disabled={customVillains.length === 0} onClick={startGame}>
+            {WEAPONS.find(w => w.id === selectedWeaponId)?.emoji} 게임 시작 ⚡
+          </button>
           <button className="lbbtn" onClick={() => { setLeaderboard(getLeaderboard()); setShowLB(true); }}>🏆 리더보드 보기</button>
         </div>
 
@@ -421,7 +612,7 @@ export default function App() {
                 : leaderboard.map((e, i) => (
                   <div className="lbrow" key={i}>
                     <div className={`lbrank ${i < 3 ? "top" : ""}`}>{["🥇", "🥈", "🥉"][i] || `${i + 1}`}</div>
-                    <div className="lbname">{e.name}<span style={{ color: "#555", fontSize: ".72rem", marginLeft: 6 }}>{e.date}</span></div>
+                    <div className="lbname">{e.weapon && <span style={{ marginRight: 4 }}>{e.weapon}</span>}{e.name}<span style={{ color: "#555", fontSize: ".72rem", marginLeft: 6 }}>{e.date}</span></div>
                     <div className="lbsc">{e.score.toLocaleString()}</div>
                   </div>
                 ))}
@@ -448,6 +639,7 @@ export default function App() {
           .tr { font-size:5rem; animation:trophy 1s infinite; }
           .rt { font-family:'Black Han Sans',sans-serif; font-size:2rem; background:linear-gradient(90deg,#ffcc00,#ff9500); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; margin:12px 0 4px; }
           .rs { color:#666; font-size:.85rem; margin-bottom:24px; }
+          .weaponbadge { background:#1a1400; border:2px solid #ffcc0055; border-radius:20px; padding:5px 16px; font-size:.85rem; color:#ffcc00; margin-bottom:16px; display:inline-block; }
           .scorecard { background:#111125; border:2px solid #ffcc0055; border-radius:20px; padding:20px 32px; margin-bottom:20px; animation:scorePop .5s ease-out; }
           .scoreval { font-family:'Black Han Sans',sans-serif; font-size:3rem; color:#ffcc00; }
           .scorelbl { font-size:.75rem; color:#888; letter-spacing:2px; }
@@ -478,6 +670,7 @@ export default function App() {
           <div className="tr">🏆</div>
           <div className="rt">전직원 격파!!</div>
           <div className="rs">오늘도 수고하셨습니다 💪</div>
+          <div className="weaponbadge">{activeWeapon.emoji} {activeWeapon.label} 사용</div>
           <div className="scorecard">
             <div className="scoreval">{finalScore.toLocaleString()}</div>
             <div className="scorelbl">TOTAL SCORE</div>
@@ -501,7 +694,9 @@ export default function App() {
             {leaderboard.map((e, i) => (
               <div className="lbrow" key={i} style={{ width: "100%", maxWidth: 360, display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid #222" }}>
                 <span style={{ fontFamily: "'Black Han Sans',sans-serif", color: i < 3 ? "#ffcc00" : "#555", width: 32 }}>{["🥇","🥈","🥉"][i] || `${i+1}`}</span>
-                <span style={{ flex: 1, fontSize: ".9rem", color: e.name === (playerName.trim() || "익명의 직장인") ? "#ff9500" : "#ddd" }}>{e.name}</span>
+                <span style={{ flex: 1, fontSize: ".9rem", color: e.name === (playerName.trim() || "익명의 직장인") ? "#ff9500" : "#ddd" }}>
+                  {e.weapon && <span style={{ marginRight: 4 }}>{e.weapon}</span>}{e.name}
+                </span>
                 <span style={{ fontFamily: "'Black Han Sans',sans-serif", color: "#ff9500" }}>{e.score.toLocaleString()}</span>
               </div>
             ))}
@@ -513,6 +708,9 @@ export default function App() {
   }
 
   // ── GAME SCREEN ─────────────────────────────────
+  const weaponFlashBg = activeWeapon.flashBg;
+  const normalBg = "radial-gradient(ellipse at center,#160028 0%,#060610 60%)";
+
   return (
     <>
       <style>{`
@@ -526,10 +724,11 @@ export default function App() {
         @keyframes bgbeat { 0%,100%{opacity:.5;}50%{opacity:1;} }
         *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
         body { background:#060610; overflow:hidden; }
-        .gw { height:100vh; height:100dvh; background:${bgFlash ? "radial-gradient(ellipse at center,#3a0010 0%,#060610 60%)" : "radial-gradient(ellipse at center,#160028 0%,#060610 60%)"}; font-family:'Noto Sans KR',sans-serif; display:flex; flex-direction:column; align-items:center; overflow:hidden; user-select:none; transition:background .1s; position:relative; }
+        .gw { height:100vh; height:100dvh; background:${bgFlash ? weaponFlashBg : normalBg}; font-family:'Noto Sans KR',sans-serif; display:flex; flex-direction:column; align-items:center; overflow:hidden; user-select:none; transition:background .1s; position:relative; }
         .topbar { width:100%; padding:14px 18px 6px; display:flex; align-items:center; justify-content:space-between; z-index:10; }
-        .vtitle { font-family:'Black Han Sans',sans-serif; font-size:1.05rem; color:#fff; max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-        .vinfo { display:flex; align-items:center; gap:10px; }
+        .vtitle { font-family:'Black Han Sans',sans-serif; font-size:1.05rem; color:#fff; max-width:130px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .weaponbadge { background:#1a1400; border:1px solid #ffcc0055; border-radius:8px; padding:3px 8px; font-size:.82rem; color:#ffcc00; }
+        .vinfo { display:flex; align-items:center; gap:8px; }
         .progbadge { font-size:.72rem; color:#555; }
         .soundbtn { background:none; border:1px solid #333; border-radius:8px; padding:4px 10px; color:#888; cursor:pointer; font-size:.85rem; }
         .bars { padding:0 18px; width:100%; z-index:10; display:flex; flex-direction:column; gap:6px; }
@@ -543,7 +742,7 @@ export default function App() {
         .arena { flex:1; display:flex; align-items:center; justify-content:center; position:relative; width:100%; }
         .vbtn { background:none; border:none; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:8px; padding:24px; border-radius:50%; animation:${isShaking ? "shake .28s ease" : "none"}; transition:transform .05s; }
         .vbtn:active { transform:scale(.9); }
-        .vemoji { font-size:7.5rem; display:block; filter:drop-shadow(0 0 28px #ff4d6d55); animation:${defeated ? "defeated 1.2s forwards" : ultimateAnim ? "ultimate .6s ease" : "none"}; }
+        .vemoji { font-size:7.5rem; display:block; filter:drop-shadow(0 0 28px ${activeWeapon.shockwaveColor}55); animation:${defeated ? "defeated 1.2s forwards" : ultimateAnim ? "ultimate .6s ease" : "none"}; }
         .vnamebadge { background:#ff4d6d18; border:2px solid #ff4d6d44; border-radius:20px; padding:5px 18px; color:#ff9500; font-family:'Black Han Sans',sans-serif; font-size:.95rem; white-space:nowrap; }
         .vtraitbadge { color:#444; font-size:.75rem; }
         .combo { position:absolute; top:16px; right:16px; font-family:'Black Han Sans',sans-serif; font-size:${combo > 10 ? "2.2rem" : "1.5rem"}; color:${combo > 10 ? "#ffcc00" : "#ff9500"}; text-shadow:${combo > 10 ? "0 0 24px #ffcc00" : "0 0 12px #ff9500"}; opacity:${combo > 1 ? 1 : 0}; transition:all .12s; }
@@ -561,6 +760,7 @@ export default function App() {
         <div className="topbar">
           <div className="vtitle">💀 {currentVillain?.name}</div>
           <div className="vinfo">
+            <span className="weaponbadge">{activeWeapon.emoji} {activeWeapon.label}</span>
             <span className="progbadge">{currentIndex + 1}/{villainList.length}</span>
             <button className="soundbtn" onClick={() => setSoundOn(s => !s)}>{soundOn ? "🔊" : "🔇"}</button>
           </div>
