@@ -640,17 +640,20 @@ export default function App() {
   useEffect(() => {
     if (!choiceEvent) return;
     setChoiceCountdown(3);
+    let active = true;
     choiceCountdownIntervalRef.current = setInterval(() => {
       setChoiceCountdown(c => {
         if (c <= 1) {
-          clearInterval(choiceCountdownIntervalRef.current);
-          handleChoiceRef.current("finish");
+          if (active) handleChoiceRef.current("finish");
           return 0;
         }
         return c - 1;
       });
     }, 1000);
-    return () => clearInterval(choiceCountdownIntervalRef.current);
+    return () => {
+      active = false;
+      clearInterval(choiceCountdownIntervalRef.current);
+    };
   }, [choiceEvent]);
 
   const submitScore = () => {
@@ -841,6 +844,12 @@ export default function App() {
           .lbname { flex:1; font-size:.9rem; color:#ddd; }
           .lbsc { font-family:'Black Han Sans',sans-serif; color:#ff9500; font-size:1rem; }
           .closebtn { background:#222; border:none; color:#aaa; border-radius:10px; padding:10px 24px; margin-top:16px; width:100%; cursor:pointer; }
+          .choicelog { width:100%; max-width:360px; margin-bottom:20px; }
+          .choicelog-title { font-size:.7rem; color:#ff9500; font-weight:700; letter-spacing:2px; text-transform:uppercase; margin-bottom:8px; text-align:left; }
+          .clrow { display:flex; align-items:center; justify-content:space-between; background:#111125; border:1px solid #222; border-radius:10px; padding:9px 12px; margin-bottom:6px; }
+          .clvillain { font-size:.82rem; color:#aaa; flex:1; }
+          .clchoice { font-size:.78rem; color:#ccc; }
+          .clbonus { font-size:.82rem; font-family:'Black Han Sans',sans-serif; min-width:52px; text-align:right; }
         `}</style>
         <div className="r">
           <div className="tr">🏆</div>
@@ -860,6 +869,21 @@ export default function App() {
             <div className="rellb"><span>스트레스 해소</span><span style={{ color: "#06d6a0", fontWeight: 700 }}>{relief}%</span></div>
             <div className="relbg"><div className="relfill" /></div>
           </div>
+
+          {choiceHistory.length > 0 && (
+            <div className="choicelog">
+              <div className="choicelog-title">▸ 선택 이벤트 이력</div>
+              {choiceHistory.map((h, i) => (
+                <div className="clrow" key={i}>
+                  <span className="clvillain">{h.villain}</span>
+                  <span className="clchoice">{h.choice}</span>
+                  <span className="clbonus" style={{ color: h.bonusScore >= 0 ? "#06d6a0" : "#ff4d6d" }}>
+                    {h.bonusScore >= 0 ? "+" : ""}{h.bonusScore}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
 
           {!showLB && <>
             <input className="ni" placeholder="닉네임으로 기록 등록하기" value={playerName} onChange={e => setPlayerName(e.target.value)} />
@@ -927,6 +951,21 @@ export default function App() {
         .defeatmsg { position:absolute; bottom:28px; left:50%; transform:translateX(-50%); color:#06d6a0; font-family:'Black Han Sans',sans-serif; font-size:1.1rem; text-shadow:0 0 20px #06d6a0; white-space:nowrap; }
         .botbar { padding:10px 18px 20px; width:100%; display:flex; justify-content:center; z-index:10; }
         .qbtn { background:#0d0d1e; border:1px solid #222; color:#555; border-radius:10px; padding:9px 22px; font-size:.82rem; cursor:pointer; font-family:'Noto Sans KR',sans-serif; }
+        .chmodal { position:fixed; inset:0; background:#000c; z-index:300; display:flex; align-items:center; justify-content:center; padding:20px; }
+        @keyframes chmodalpop { 0%{transform:scale(.85);opacity:0;}100%{transform:scale(1);opacity:1;} }
+        .chbox { background:#111125; border:2px solid #333; border-radius:24px; padding:28px 22px 24px; width:100%; max-width:360px; animation:chmodalpop .3s ease-out; }
+        .chtitle { font-family:'Black Han Sans',sans-serif; font-size:1.3rem; color:#ffcc00; text-align:center; margin-bottom:6px; }
+        .chvillain { text-align:center; font-size:.9rem; color:#888; margin-bottom:20px; }
+        .chvillain b { color:#ff9500; }
+        .chbtns { display:flex; flex-direction:column; gap:10px; }
+        .chbtn { border:none; border-radius:14px; padding:14px 16px; font-size:.97rem; font-family:'Black Han Sans',sans-serif; cursor:pointer; text-align:left; transition:transform .1s; }
+        .chbtn:active { transform:scale(.97); }
+        .chbtn.finish { background:linear-gradient(90deg,#1a1a2e,#2a1a3e); color:#cc99ff; border:2px solid #6633cc44; }
+        .chbtn.supply { background:linear-gradient(90deg,#001a2e,#001a18); color:#06d6a0; border:2px solid #06d6a044; }
+        .chbtn.heal   { background:linear-gradient(90deg,#2a0018,#2a1000); color:#ff9500; border:2px solid #ff950044; }
+        .chbtn-sub { display:block; font-family:'Noto Sans KR',sans-serif; font-size:.72rem; margin-top:3px; opacity:.7; font-weight:400; }
+        .chtimer { text-align:center; margin-top:16px; font-size:.82rem; color:#444; }
+        .chtimer b { color:#ff4d6d; }
       `}</style>
 
       {particles.map(p => <FloatingText key={p.id} {...p} />)}
@@ -944,7 +983,7 @@ export default function App() {
 
         <div className="bars">
           <div>
-            <div className="barlbl"><span>❤️ HP</span><span style={{ color: hpPct < 30 ? "#ff4d6d" : "#555" }}>{hp}/100</span></div>
+            <div className="barlbl"><span>❤️ HP</span><span style={{ color: hpPct < 30 ? "#ff4d6d" : "#555" }}>{hp}/{maxHp}</span></div>
             <div className="barbg"><div className="hpfill" /></div>
           </div>
           <div>
@@ -976,13 +1015,37 @@ export default function App() {
           )}
 
           {!defeated && <div className="taphint">TAP TO ATTACK</div>}
-          {defeated && <div className="defeatmsg">💥 격파!! 다음 빌런 등장...</div>}
+          {defeated && !choiceEvent && <div className="defeatmsg">💥 격파!! 다음 빌런 등장...</div>}
         </div>
 
         <div className="botbar">
           <button className="qbtn" onClick={() => { audioEngine.stopBGM(); setScreen("setup"); }}>← 빌런 재설정</button>
         </div>
       </div>
+
+      {choiceEvent && (
+        <div className="chmodal">
+          <div className="chbox">
+            <div className="chtitle">⚖️ 선택의 순간</div>
+            <div className="chvillain"><b>{choiceEvent.villain?.name}</b>을(를) 격파했습니다.<br/>이제 어떻게 하시겠습니까?</div>
+            <div className="chbtns">
+              <button className="chbtn finish" onClick={() => handleChoice("finish")}>
+                ⚡ 이대로 끝낸다
+                <span className="chbtn-sub">+100점 — 다음 빌런 변화 없음</span>
+              </button>
+              <button className="chbtn supply" onClick={() => handleChoice("supply")}>
+                📦 구호품을 보낸다
+                <span className="chbtn-sub">-50점 — 다음 빌런 HP -20 (약해짐)</span>
+              </button>
+              <button className="chbtn heal" onClick={() => handleChoice("heal")}>
+                💊 치료를 지원한다
+                <span className="chbtn-sub">+200점 — 다음 빌런 HP +30 (강해짐)</span>
+              </button>
+            </div>
+            <div className="chtimer"><b>{choiceCountdown}초</b> 후 자동으로 "이대로 끝낸다" 선택됩니다</div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

@@ -302,12 +302,12 @@
 ### Phase 3 — 선택 이벤트 시스템
 > Phase 1 완료 후 진행 (Phase 2와 병렬 가능).
 
-- [ ] `choiceEvent` state 추가 (null | { active, villain })
-- [ ] `triggerDefeat()`에서 마지막 빌런이 아닌 경우 모달 표시
-- [ ] 선택지 3종 UI 구현 (모달 컴포넌트)
-- [ ] 3초 자동 진행 타이머 구현
-- [ ] 선택 결과 누적 (`choiceHistory` state), 결과 화면에 표시
-- [ ] 점수 계산식 업데이트 (선택 보너스 반영)
+- [v] `choiceEvent` state 추가 (null | { active, villain })
+- [v] `triggerDefeat()`에서 마지막 빌런이 아닌 경우 모달 표시
+- [v] 선택지 3종 UI 구현 (모달 컴포넌트)
+- [v] 3초 자동 진행 타이머 구현
+- [v] 선택 결과 누적 (`choiceHistory` state), 결과 화면에 표시
+- [v] 점수 계산식 업데이트 (선택 보너스 반영)
 
 ### Phase 4 — 점수 밸런싱 & 리더보드 업데이트
 > Phase 1~3 완료 후 진행.
