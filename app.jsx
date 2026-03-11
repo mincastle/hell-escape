@@ -253,6 +253,19 @@ class AudioEngine {
       osc.start(now + i * 0.1); osc.stop(now + i * 0.1 + 0.35);
     });
   }
+  playChoice() {
+    if (!this.ctx || !this.enabled) return;
+    const now = this.ctx.currentTime;
+    [440, 550, 660].forEach((f, i) => {
+      const osc = this.ctx.createOscillator();
+      const env = this.ctx.createGain();
+      osc.type = "sine"; osc.frequency.value = f;
+      env.gain.setValueAtTime(0.28, now + i * 0.09);
+      env.gain.exponentialRampToValueAtTime(0.001, now + i * 0.09 + 0.18);
+      osc.connect(env); env.connect(this.sfxGain);
+      osc.start(now + i * 0.09); osc.stop(now + i * 0.09 + 0.22);
+    });
+  }
   setEnabled(v) { this.enabled = v; if (!v) this.stopBGM(); }
 }
 const audioEngine = new AudioEngine();
@@ -280,8 +293,8 @@ const saveScore = (entry) => {
   lb.sort((a, b) => b.score - a.score);
   localStorage.setItem(LB_KEY, JSON.stringify(lb.slice(0, 10)));
 };
-const calcScore = (hits, maxCombo, villainCount, stressRelief) =>
-  hits * 10 + maxCombo * 50 + villainCount * 200 + stressRelief * 5;
+const calcScore = (hits, maxCombo, villainCount, stressRelief, bonus = 0) =>
+  hits * 10 + maxCombo * 50 + villainCount * 200 + stressRelief * 5 + bonus;
 
 // ── Components ────────────────────────────────────
 function FloatingText({ x, y, text, color }) {
@@ -439,12 +452,20 @@ export default function App() {
   const pidRef = useRef(0);
   const sidRef = useRef(0);
   const activeWeaponRef = useRef(WEAPONS[0]);
+  const maxHpRef = useRef(100);
+  const handleChoiceRef = useRef(null);
+  const choiceCountdownIntervalRef = useRef(null);
 
   const [bulletHoles, setBulletHoles] = useState([]);
+  const [maxHp, setMaxHp] = useState(100);
+  const [choiceEvent, setChoiceEvent] = useState(null); // { villain, nextIndex }
+  const [choiceHistory, setChoiceHistory] = useState([]);
+  const [choiceBonus, setChoiceBonus] = useState(0);
+  const [choiceCountdown, setChoiceCountdown] = useState(3);
 
-  const hpPct = (hp / 100) * 100;
+  const hpPct = (hp / maxHp) * 100;
   const skillPct = skillGauge;
-  const damageStage = hp >= 75 ? 0 : hp >= 50 ? 1 : hp >= 25 ? 2 : hp >= 10 ? 3 : 4;
+  const damageStage = hpPct >= 75 ? 0 : hpPct >= 50 ? 1 : hpPct >= 25 ? 2 : hpPct >= 10 ? 3 : 4;
 
   useEffect(() => {
     audioEngine.setEnabled(soundOn);
@@ -455,8 +476,11 @@ export default function App() {
     activeWeaponRef.current = activeWeapon;
   }, [activeWeapon]);
 
-  const loadVillain = (v) => {
-    setCurrentVillain(v); setHp(100); setCombo(0);
+  const loadVillain = (v, hpMod = 0) => {
+    const initialHp = Math.max(10, Math.min(130, 100 + hpMod));
+    maxHpRef.current = initialHp;
+    setMaxHp(initialHp);
+    setCurrentVillain(v); setHp(initialHp); setCombo(0);
     setDefeated(false); setVillainEmotion(v.emoji); setSkillGauge(0); setUltimateReady(false);
     setBulletHoles([]);
   };
@@ -470,6 +494,7 @@ export default function App() {
     setVillainList(customVillains); setCurrentIndex(0);
     loadVillain(customVillains[0]);
     setStress(100); setTotalHits(0); setMaxCombo(0);
+    setChoiceHistory([]); setChoiceBonus(0); setChoiceEvent(null);
     setScreen("game");
   };
 
@@ -530,8 +555,8 @@ export default function App() {
       setBulletHoles(holes => {
         if (holes.length >= 10) return holes;
         return [...holes, {
-          x: Math.floor((Math.random() - 0.5) * 110),
-          y: Math.floor((Math.random() - 0.5) * 110),
+          x: Math.floor((Math.random() - 0.5) * 80),
+          y: Math.floor((Math.random() - 0.5) * 80),
         }];
       });
     }
@@ -547,9 +572,10 @@ export default function App() {
     setTimeout(() => setIsShaking(false), 280);
     setTimeout(() => setBgFlash(false), 120);
 
-    if (newHp < 70) setVillainEmotion("😰");
-    if (newHp < 40) setVillainEmotion("😱");
-    if (newHp < 15) setVillainEmotion("🤮");
+    const newHpPct = (newHp / maxHpRef.current) * 100;
+    if (newHpPct < 70) setVillainEmotion("😰");
+    if (newHpPct < 40) setVillainEmotion("😱");
+    if (newHpPct < 15) setVillainEmotion("🤮");
     if (newHp <= 0) triggerDefeat();
   }, [defeated, hp, combo, currentIndex, villainList]);
 
@@ -560,11 +586,11 @@ export default function App() {
     setTimeout(() => {
       const ni = currentIndex + 1;
       if (ni < villainList.length) {
-        setCurrentIndex(ni); loadVillain(villainList[ni]);
+        setChoiceEvent({ villain: currentVillain, nextIndex: ni });
       } else {
         audioEngine.stopBGM();
         const relief = Math.max(0, 100 - stress);
-        const score = calcScore(totalHits + 1, maxCombo, villainList.length, relief);
+        const score = calcScore(totalHits + 1, maxCombo, villainList.length, relief, choiceBonus);
         setFinalScore(score);
         setLeaderboard(getLeaderboard());
         setScreen("result");
@@ -584,14 +610,48 @@ export default function App() {
       const newHp = Math.max(0, h - dmg);
       if (newHp <= 0) setTimeout(triggerDefeat, 200);
       else {
-        if (newHp < 40) setVillainEmotion("😱");
-        if (newHp < 15) setVillainEmotion("🤮");
+        const newHpPct = (newHp / maxHpRef.current) * 100;
+        if (newHpPct < 40) setVillainEmotion("😱");
+        if (newHpPct < 15) setVillainEmotion("🤮");
       }
       return newHp;
     });
     setSkillGauge(0); setUltimateReady(false);
     setTimeout(() => setUltimateAnim(false), 600);
   };
+
+  const handleChoice = (type) => {
+    clearInterval(choiceCountdownIntervalRef.current);
+    if (!choiceEvent) return;
+    const { nextIndex } = choiceEvent;
+    let bonusScore = 0, hpMod = 0, label = "";
+    if (type === "finish")  { bonusScore = 100;  hpMod =   0; label = "⚡ 이대로 끝낸다"; }
+    if (type === "supply")  { bonusScore = -50;  hpMod = -20; label = "📦 구호품을 보낸다"; }
+    if (type === "heal")    { bonusScore = 200;  hpMod =  30; label = "💊 치료를 지원한다"; }
+    audioEngine.playChoice();
+    setChoiceHistory(h => [...h, { villain: choiceEvent.villain?.name || "?", choice: label, bonusScore }]);
+    setChoiceBonus(b => b + bonusScore);
+    setCurrentIndex(nextIndex);
+    loadVillain(villainList[nextIndex], hpMod);
+    setChoiceEvent(null);
+  };
+  handleChoiceRef.current = handleChoice;
+
+  useEffect(() => {
+    if (!choiceEvent) return;
+    setChoiceCountdown(3);
+    choiceCountdownIntervalRef.current = setInterval(() => {
+      setChoiceCountdown(c => {
+        if (c <= 1) {
+          clearInterval(choiceCountdownIntervalRef.current);
+          handleChoiceRef.current("finish");
+          return 0;
+        }
+        return c - 1;
+      });
+    }, 1000);
+    return () => clearInterval(choiceCountdownIntervalRef.current);
+  }, [choiceEvent]);
 
   const submitScore = () => {
     const name = playerName.trim() || "익명의 직장인";
@@ -901,9 +961,9 @@ export default function App() {
           <div className="combo">{combo > 1 ? `${combo} HIT!` : ""}</div>
 
           <button className="vbtn" onClick={handleHit}>
-            <div style={{ position: "relative", display: "inline-block", lineHeight: 1 }}>
+            <div style={{ position: "relative", display: "inline-block", width: "7.5rem", height: "7.5rem", overflow: "hidden" }}>
               <span className="vemoji">{villainEmotion}</span>
-              <DamageOverlay weaponId={activeWeapon.id} stage={damageStage} bulletHoles={bulletHoles} />
+              {!defeated && <DamageOverlay weaponId={activeWeapon.id} stage={damageStage} bulletHoles={bulletHoles} />}
             </div>
             <div className="vnamebadge">{currentVillain?.name}</div>
             <div className="vtraitbadge">{currentVillain?.trait}</div>

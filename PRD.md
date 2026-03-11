@@ -293,11 +293,11 @@
 ### Phase 2 — 피해 누적 시각화
 > Phase 1 완료 후 진행.
 
-- [x] `damageStage` state 추가 (0~4, HP 구간별 자동 갱신)
-- [x] 빌런 표시 영역을 `position: relative` 컨테이너로 감싸기
-- [x] 무기별 × 단계별 오버레이 CSS 클래스 정의 (망치/칼/총/불 각 4단계)
-- [x] `loadVillain()` 호출 시 `damageStage` 초기화
-- [x] 총 무기: 탄흔(⚫) 누적 렌더링 (배열 state)
+- [v] `damageStage` state 추가 (0~4, HP 구간별 자동 갱신)
+- [v] 빌런 표시 영역을 `position: relative` 컨테이너로 감싸기
+- [v] 무기별 × 단계별 오버레이 CSS 클래스 정의 (망치/칼/총/불 각 4단계)
+- [v] `loadVillain()` 호출 시 `damageStage` 초기화
+- [v] 총 무기: 탄흔(⚫) 누적 렌더링 (배열 state)
 
 ### Phase 3 — 선택 이벤트 시스템
 > Phase 1 완료 후 진행 (Phase 2와 병렬 가능).
