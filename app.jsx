@@ -323,6 +323,27 @@ function Shockwave({ x, y, big, color }) {
   );
 }
 
+// ── WeaponStrike (FB-007) ─────────────────────────
+const WS_ANIM = {
+  fist:   { anim: "wsFist",   dur: 320, size: "5rem" },
+  hammer: { anim: "wsHammer", dur: 380, size: "5.2rem" },
+  knife:  { anim: "wsKnife",  dur: 270, size: "4.5rem" },
+  gun:    { anim: "wsGun",    dur: 260, size: "4rem" },
+  fire:   { anim: "wsFire",   dur: 350, size: "5rem" },
+};
+
+function WeaponStrike({ x, y, weaponId, emoji }) {
+  const cfg = WS_ANIM[weaponId] || WS_ANIM.fist;
+  return (
+    <div style={{
+      position: "fixed", left: x, top: y,
+      pointerEvents: "none", zIndex: 9997,
+      fontSize: cfg.size, lineHeight: 1,
+      animation: `${cfg.anim} ${cfg.dur}ms ease-out forwards`,
+    }}>{emoji}</div>
+  );
+}
+
 // ── DamageOverlay ─────────────────────────────────
 const HAMMER_MARKS = [
   [],
@@ -463,6 +484,17 @@ export default function App() {
   const [choiceBonus, setChoiceBonus] = useState(0);
   const [choiceCountdown, setChoiceCountdown] = useState(3);
 
+  // FB-007: 무기 타격 애니메이션
+  const [weaponStrikes, setWeaponStrikes] = useState([]);
+  const wsIdRef = useRef(0);
+
+  // FB-008: 갱생 기회 이벤트
+  const [redemptionEvent, setRedemptionEvent] = useState(null); // { villain }
+  const [redemptionCountdown, setRedemptionCountdown] = useState(5);
+  const redemptionShownRef = useRef(false);
+  const redemptionCountdownIntervalRef = useRef(null);
+  const handleRedemptionRef = useRef(null);
+
   const hpPct = (hp / maxHp) * 100;
   const skillPct = skillGauge;
   const damageStage = hpPct >= 75 ? 0 : hpPct >= 50 ? 1 : hpPct >= 25 ? 2 : hpPct >= 10 ? 3 : 4;
@@ -483,6 +515,7 @@ export default function App() {
     setCurrentVillain(v); setHp(initialHp); setCombo(0);
     setDefeated(false); setVillainEmotion(v.emoji); setSkillGauge(0); setUltimateReady(false);
     setBulletHoles([]);
+    redemptionShownRef.current = false;
   };
 
   const startGame = () => {
@@ -510,8 +543,16 @@ export default function App() {
     setTimeout(() => setShockwaves(p => p.filter(i => i.id !== id)), 700);
   };
 
+  // FB-007: 무기 타격 애니메이션 추가
+  const addWeaponStrike = (x, y, weapon) => {
+    const id = ++wsIdRef.current;
+    const dur = WS_ANIM[weapon.id]?.dur || 320;
+    setWeaponStrikes(s => [...s, { id, x, y, weaponId: weapon.id, emoji: weapon.emoji }]);
+    setTimeout(() => setWeaponStrikes(s => s.filter(i => i.id !== id)), dur + 60);
+  };
+
   const handleHit = useCallback((e) => {
-    if (defeated) return;
+    if (defeated || redemptionEvent) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const x = (e.clientX || e.touches?.[0]?.clientX) ?? rect.left + rect.width / 2;
     const y = (e.clientY || e.touches?.[0]?.clientY) ?? rect.top + rect.height / 2;
@@ -568,6 +609,7 @@ export default function App() {
     }
 
     addShockwave(x, y, false, weapon.shockwaveColor);
+    addWeaponStrike(x, y, weapon); // FB-007
     setIsShaking(true); setBgFlash(true);
     setTimeout(() => setIsShaking(false), 280);
     setTimeout(() => setBgFlash(false), 120);
@@ -576,8 +618,15 @@ export default function App() {
     if (newHpPct < 70) setVillainEmotion("😰");
     if (newHpPct < 40) setVillainEmotion("😱");
     if (newHpPct < 15) setVillainEmotion("🤮");
+
+    // FB-008: HP 30% 최초 진입 시 갱생 기회 이벤트
+    if (newHpPct <= 30 && !redemptionShownRef.current && newHp > 0) {
+      redemptionShownRef.current = true;
+      setRedemptionEvent({ villain: currentVillain });
+    }
+
     if (newHp <= 0) triggerDefeat();
-  }, [defeated, hp, combo, currentIndex, villainList]);
+  }, [defeated, hp, combo, currentIndex, villainList, redemptionEvent, currentVillain]);
 
   const triggerDefeat = () => {
     setDefeated(true); setVillainEmotion("💀");
@@ -620,6 +669,35 @@ export default function App() {
     setTimeout(() => setUltimateAnim(false), 600);
   };
 
+  // FB-008: 갱생 기회 선택 처리
+  const handleRedemption = (type) => {
+    clearInterval(redemptionCountdownIntervalRef.current);
+    setRedemptionEvent(null);
+    if (type === "save") {
+      audioEngine.playChoice();
+      vibrate([30, 20, 50]);
+      setVillainEmotion("🙏");
+      setDefeated(true);
+      setChoiceHistory(h => [...h, { villain: currentVillain?.name || "?", choice: "🕊️ 갱생시킨다", bonusScore: 300 }]);
+      setChoiceBonus(b => b + 300);
+      setTimeout(() => {
+        const ni = currentIndex + 1;
+        if (ni < villainList.length) {
+          setChoiceEvent({ villain: currentVillain, nextIndex: ni });
+        } else {
+          audioEngine.stopBGM();
+          const relief = Math.max(0, 100 - stress);
+          const score = calcScore(totalHits + 1, maxCombo, villainList.length, relief, choiceBonus + 300);
+          setFinalScore(score);
+          setLeaderboard(getLeaderboard());
+          setScreen("result");
+        }
+      }, 1200);
+    }
+    // "continue" → 모달 닫기만 하면 됨 (이미 위에서 setRedemptionEvent(null))
+  };
+  handleRedemptionRef.current = handleRedemption;
+
   const handleChoice = (type) => {
     clearInterval(choiceCountdownIntervalRef.current);
     if (!choiceEvent) return;
@@ -636,6 +714,26 @@ export default function App() {
     setChoiceEvent(null);
   };
   handleChoiceRef.current = handleChoice;
+
+  // FB-008: 갱생 이벤트 5초 카운트다운
+  useEffect(() => {
+    if (!redemptionEvent) return;
+    setRedemptionCountdown(5);
+    let active = true;
+    redemptionCountdownIntervalRef.current = setInterval(() => {
+      setRedemptionCountdown(c => {
+        if (c <= 1) {
+          if (active) handleRedemptionRef.current("continue");
+          return 0;
+        }
+        return c - 1;
+      });
+    }, 1000);
+    return () => {
+      active = false;
+      clearInterval(redemptionCountdownIntervalRef.current);
+    };
+  }, [redemptionEvent]);
 
   useEffect(() => {
     if (!choiceEvent) return;
@@ -922,6 +1020,26 @@ export default function App() {
         @keyframes ultimate { 0%{transform:scale(1);}25%{transform:scale(1.6) rotate(-10deg);filter:brightness(5);}75%{transform:scale(0.7) rotate(10deg);}100%{transform:scale(1);} }
         @keyframes skillPulse { 0%,100%{box-shadow:0 0 0 0 #ffcc0066;}50%{box-shadow:0 0 0 10px transparent;} }
         @keyframes bgbeat { 0%,100%{opacity:.5;}50%{opacity:1;} }
+        @keyframes wsFist   { 0%{transform:translate(-50%,80px) scale(0.6) rotate(-15deg);opacity:.9;} 40%{transform:translate(-50%,-22px) scale(2.7) rotate(5deg);opacity:1;} 100%{transform:translate(-50%,-60px) scale(1.2) rotate(15deg);opacity:0;} }
+        @keyframes wsHammer { 0%{transform:translate(-50%,-110px) scale(0.7) rotate(-80deg);opacity:.9;} 45%{transform:translate(-50%,-18px) scale(2.5) rotate(12deg);opacity:1;} 100%{transform:translate(-50%,28px) scale(0.8) rotate(22deg);opacity:0;} }
+        @keyframes wsKnife  { 0%{transform:translate(-130%,-130%) scale(0.6) rotate(-50deg);opacity:.9;} 40%{transform:translate(-50%,-50%) scale(2.2) rotate(5deg);opacity:1;} 100%{transform:translate(60%,60%) scale(0.6) rotate(60deg);opacity:0;} }
+        @keyframes wsGun    { 0%{transform:translate(-50%,55px) scale(1.6);opacity:1;} 25%{transform:translate(-50%,8px) scale(2.9);opacity:1;} 55%{transform:translate(-50%,28px) scale(2.1);opacity:.7;} 100%{transform:translate(-50%,68px) scale(1.2);opacity:0;} }
+        @keyframes wsFire   { 0%{transform:translate(-50%,95px) scale(0.5);opacity:.8;} 45%{transform:translate(-50%,-28px) scale(2.8);opacity:1;} 100%{transform:translate(-50%,-75px) scale(1.1);opacity:0;} }
+        @keyframes rdpop    { 0%{transform:scale(.82) translateY(18px);opacity:0;} 100%{transform:scale(1) translateY(0);opacity:1;} }
+        .rdmodal { position:fixed; inset:0; background:#000d; z-index:400; display:flex; align-items:center; justify-content:center; padding:20px; }
+        .rdbox { background:#0b0b1c; border:2px solid #06d6a055; border-radius:24px; padding:28px 22px 22px; width:100%; max-width:340px; animation:rdpop .3s ease-out; text-align:center; }
+        .rdvemoji { font-size:4.8rem; margin-bottom:6px; display:block; }
+        .rdtitle { font-family:'Black Han Sans',sans-serif; font-size:1.35rem; color:#06d6a0; margin-bottom:4px; }
+        .rdvillain { font-size:.85rem; color:#777; margin-bottom:18px; }
+        .rdvillain b { color:#ff9500; }
+        .rdbtns { display:flex; flex-direction:column; gap:10px; }
+        .rdbtn { border:none; border-radius:14px; padding:14px 16px; font-size:.97rem; font-family:'Black Han Sans',sans-serif; cursor:pointer; text-align:left; transition:transform .1s; }
+        .rdbtn:active { transform:scale(.97); }
+        .rdbtn.save { background:linear-gradient(90deg,#002a1e,#001e28); color:#06d6a0; border:2px solid #06d6a044; }
+        .rdbtn.cont { background:linear-gradient(90deg,#1e0010,#280e00); color:#ff6b6b; border:2px solid #ff4d6d33; }
+        .rdbtn-sub { display:block; font-family:'Noto Sans KR',sans-serif; font-size:.72rem; margin-top:3px; opacity:.65; font-weight:400; }
+        .rdtimer { margin-top:14px; font-size:.8rem; color:#3a3a5a; }
+        .rdtimer b { color:#06d6a0; }
         *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
         body { background:#060610; overflow:hidden; }
         .gw { height:100vh; height:100dvh; background:${bgFlash ? weaponFlashBg : normalBg}; font-family:'Noto Sans KR',sans-serif; display:flex; flex-direction:column; align-items:center; overflow:hidden; user-select:none; transition:background .1s; position:relative; }
@@ -970,6 +1088,7 @@ export default function App() {
 
       {particles.map(p => <FloatingText key={p.id} {...p} />)}
       {shockwaves.map(s => <Shockwave key={s.id} {...s} />)}
+      {weaponStrikes.map(w => <WeaponStrike key={w.id} {...w} />)}
 
       <div className="gw">
         <div className="topbar">
@@ -1022,6 +1141,28 @@ export default function App() {
           <button className="qbtn" onClick={() => { audioEngine.stopBGM(); setScreen("setup"); }}>← 빌런 재설정</button>
         </div>
       </div>
+
+      {/* FB-008: 갱생 기회 모달 */}
+      {redemptionEvent && (
+        <div className="rdmodal">
+          <div className="rdbox">
+            <span className="rdvemoji">{villainEmotion === "🤮" ? "😭" : "😭"}</span>
+            <div className="rdtitle">🕊️ 구해주시겠습니까?</div>
+            <div className="rdvillain"><b>{redemptionEvent.villain?.name}</b>이(가) 살려달라고 애원하고 있습니다.</div>
+            <div className="rdbtns">
+              <button className="rdbtn save" onClick={() => handleRedemptionRef.current("save")}>
+                🕊️ 갱생시킨다
+                <span className="rdbtn-sub">+300점 보너스 — 전투 종료 후 다음으로 진행</span>
+              </button>
+              <button className="rdbtn cont" onClick={() => handleRedemptionRef.current("continue")}>
+                ⚡ 계속 공격한다
+                <span className="rdbtn-sub">보너스 없음 — 전투 계속</span>
+              </button>
+            </div>
+            <div className="rdtimer"><b>{redemptionCountdown}초</b> 후 자동으로 "계속 공격"</div>
+          </div>
+        </div>
+      )}
 
       {choiceEvent && (
         <div className="chmodal">
