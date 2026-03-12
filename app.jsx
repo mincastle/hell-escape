@@ -23,6 +23,7 @@ const WEAPONS = [
     shockwaveColor: "#ff4d6d",
     flashBg: "radial-gradient(ellipse at center,#3a0010 0%,#060610 60%)",
     vibration: [20], comboVibration: [30, 10, 30],
+    scoreMultiplier: 1.0, // 기준 무기 (배율 없음)
   },
   {
     id: "hammer",
@@ -33,6 +34,7 @@ const WEAPONS = [
     shockwaveColor: "#ffcc00",
     flashBg: "radial-gradient(ellipse at center,#2a1500 0%,#060610 60%)",
     vibration: [50, 20, 30], comboVibration: [80, 20, 60, 20, 40],
+    scoreMultiplier: 1.1, // 고데미지 중타격 +10%
   },
   {
     id: "knife",
@@ -43,6 +45,7 @@ const WEAPONS = [
     shockwaveColor: "#ff4d6d",
     flashBg: "radial-gradient(ellipse at center,#3a0010 0%,#060610 60%)",
     vibration: [10, 10, 10], comboVibration: [15, 8, 15, 8, 15],
+    scoreMultiplier: 1.2, // 다단 타격 콤보 플레이 보상 +20%
   },
   {
     id: "gun",
@@ -53,6 +56,7 @@ const WEAPONS = [
     shockwaveColor: "#e8e8e8",
     flashBg: "radial-gradient(ellipse at center,#0a0a1a 0%,#060610 60%)",
     vibration: [15], comboVibration: [20, 10, 20],
+    scoreMultiplier: 1.1, // 원거리 정밀 타격 +10%
   },
   {
     id: "fire",
@@ -63,6 +67,7 @@ const WEAPONS = [
     shockwaveColor: "#ff9500",
     flashBg: "radial-gradient(ellipse at center,#2a1000 0%,#060610 60%)",
     vibration: [30, 10, 20, 10], comboVibration: [40, 15, 30, 15, 20],
+    scoreMultiplier: 1.15, // DoT 콤보 운용 +15%
   },
 ];
 
@@ -293,8 +298,8 @@ const saveScore = (entry) => {
   lb.sort((a, b) => b.score - a.score);
   localStorage.setItem(LB_KEY, JSON.stringify(lb.slice(0, 10)));
 };
-const calcScore = (hits, maxCombo, villainCount, stressRelief, bonus = 0) =>
-  hits * 10 + maxCombo * 50 + villainCount * 200 + stressRelief * 5 + bonus;
+const calcScore = (hits, maxCombo, villainCount, stressRelief, bonus = 0, weaponMultiplier = 1.0) =>
+  Math.floor((hits * 10 + maxCombo * 50 + villainCount * 200 + stressRelief * 5 + bonus) * weaponMultiplier);
 
 // ── Components ────────────────────────────────────
 function FloatingText({ x, y, text, color }) {
@@ -639,7 +644,7 @@ export default function App() {
       } else {
         audioEngine.stopBGM();
         const relief = Math.max(0, 100 - stress);
-        const score = calcScore(totalHits + 1, maxCombo, villainList.length, relief, choiceBonus);
+        const score = calcScore(totalHits + 1, maxCombo, villainList.length, relief, choiceBonus, activeWeaponRef.current.scoreMultiplier ?? 1.0);
         setFinalScore(score);
         setLeaderboard(getLeaderboard());
         setScreen("result");
@@ -687,7 +692,7 @@ export default function App() {
         } else {
           audioEngine.stopBGM();
           const relief = Math.max(0, 100 - stress);
-          const score = calcScore(totalHits + 1, maxCombo, villainList.length, relief, choiceBonus + 300);
+          const score = calcScore(totalHits + 1, maxCombo, villainList.length, relief, choiceBonus + 300, activeWeaponRef.current.scoreMultiplier ?? 1.0);
           setFinalScore(score);
           setLeaderboard(getLeaderboard());
           setScreen("result");

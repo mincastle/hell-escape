@@ -349,10 +349,10 @@
 ### Phase 4 — 점수 밸런싱 & 리더보드 업데이트
 > Phase 1~3 완료 후 진행.
 
-- [ ] 무기별 점수 배율 조정
-- [ ] 선택 이벤트 보너스/패널티 수치 밸런싱
-- [ ] 리더보드 저장 항목에 `weapon` 추가
-- [ ] `localStorage` 키 `hellgate_leaderboard_v3`으로 마이그레이션
+- [v] 무기별 점수 배율 조정 (fist×1.0 / hammer×1.1 / knife×1.2 / gun×1.1 / fire×1.15)
+- [v] 선택 이벤트 보너스/패널티 수치 밸런싱 (finish+100 / supply-50 / heal+200)
+- [v] 리더보드 저장 항목에 `weapon` 추가
+- [v] `localStorage` 키 `hellgate_leaderboard_v3`으로 마이그레이션
 
 ### Phase 5 — 타격 몰입감 강화 (신규 — FB-007, FB-008)
 > Phase 1~2 완료 후 진행 가능.
