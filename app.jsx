@@ -328,24 +328,35 @@ function Shockwave({ x, y, big, color }) {
   );
 }
 
-// ── WeaponStrike (FB-007) ─────────────────────────
-const WS_ANIM = {
-  fist:   { anim: "wsFist",   dur: 320, size: "5rem" },
-  hammer: { anim: "wsHammer", dur: 380, size: "5.2rem" },
-  knife:  { anim: "wsKnife",  dur: 270, size: "4.5rem" },
-  gun:    { anim: "wsGun",    dur: 260, size: "4rem" },
-  fire:   { anim: "wsFire",   dur: 350, size: "5rem" },
+// ── FPSWeaponView (FB-007 개선 — 상시 1인칭 무기 표시) ──────
+const FPS_CFG = {
+  fist:   { anim:"fpsFist",   dur:280, size:"5.5rem", bottom:"72px", left:"50%",  right:"auto", restTransform:"translateX(-50%) rotate(-8deg)"  },
+  hammer: { anim:"fpsHammer", dur:360, size:"5rem",   bottom:"68px", left:"50%",  right:"auto", restTransform:"translateX(-50%) rotate(-5deg)"  },
+  knife:  { anim:"fpsKnife",  dur:240, size:"5rem",   bottom:"76px", left:"auto", right:"18px", restTransform:"rotate(-30deg)"                  },
+  gun:    { anim:"fpsGun",    dur:220, size:"5.5rem", bottom:"72px", left:"auto", right:"14px", restTransform:"rotate(-8deg)"                   },
+  fire:   { anim:"fpsFire",   dur:320, size:"5.5rem", bottom:"72px", left:"50%",  right:"auto", restTransform:"translateX(-50%) scale(1)"       },
 };
 
-function WeaponStrike({ x, y, weaponId, emoji }) {
-  const cfg = WS_ANIM[weaponId] || WS_ANIM.fist;
+function FPSWeaponView({ weaponId, emoji, attackTick }) {
+  const cfg = FPS_CFG[weaponId] || FPS_CFG.fist;
   return (
     <div style={{
-      position: "fixed", left: x, top: y,
-      pointerEvents: "none", zIndex: 9997,
-      fontSize: cfg.size, lineHeight: 1,
-      animation: `${cfg.anim} ${cfg.dur}ms ease-out forwards`,
-    }}>{emoji}</div>
+      position:"fixed", bottom:cfg.bottom, left:cfg.left, right:cfg.right,
+      fontSize:cfg.size, lineHeight:1,
+      transform:cfg.restTransform,
+      pointerEvents:"none", zIndex:50,
+      filter:"drop-shadow(0 4px 14px #00000088)",
+    }}>
+      <span
+        key={`${weaponId}-${attackTick}`}
+        style={{
+          display:"inline-block",
+          animation: attackTick > 0
+            ? `${cfg.anim} ${cfg.dur}ms cubic-bezier(.22,.61,.36,1) forwards`
+            : "none",
+        }}
+      >{emoji}</span>
+    </div>
   );
 }
 
@@ -489,9 +500,8 @@ export default function App() {
   const [choiceBonus, setChoiceBonus] = useState(0);
   const [choiceCountdown, setChoiceCountdown] = useState(3);
 
-  // FB-007: 무기 타격 애니메이션
-  const [weaponStrikes, setWeaponStrikes] = useState([]);
-  const wsIdRef = useRef(0);
+  // FB-007: FPS 무기 공격 트리거 (tick 증가마다 animation 재시작)
+  const [attackTick, setAttackTick] = useState(0);
 
   // FB-008: 갱생 기회 이벤트
   const [redemptionEvent, setRedemptionEvent] = useState(null); // { villain }
@@ -548,13 +558,6 @@ export default function App() {
     setTimeout(() => setShockwaves(p => p.filter(i => i.id !== id)), 700);
   };
 
-  // FB-007: 무기 타격 애니메이션 추가
-  const addWeaponStrike = (x, y, weapon) => {
-    const id = ++wsIdRef.current;
-    const dur = WS_ANIM[weapon.id]?.dur || 320;
-    setWeaponStrikes(s => [...s, { id, x, y, weaponId: weapon.id, emoji: weapon.emoji }]);
-    setTimeout(() => setWeaponStrikes(s => s.filter(i => i.id !== id)), dur + 60);
-  };
 
   const handleHit = useCallback((e) => {
     if (defeated || redemptionEvent) return;
@@ -614,7 +617,7 @@ export default function App() {
     }
 
     addShockwave(x, y, false, weapon.shockwaveColor);
-    addWeaponStrike(x, y, weapon); // FB-007
+    setAttackTick(t => t + 1); // FB-007: FPS 무기 공격 애니메이션 트리거
     setIsShaking(true); setBgFlash(true);
     setTimeout(() => setIsShaking(false), 280);
     setTimeout(() => setBgFlash(false), 120);
@@ -659,6 +662,7 @@ export default function App() {
     vibrate([100, 50, 100, 50, 200]);
     addShockwave(window.innerWidth / 2, window.innerHeight / 2, true, activeWeapon.shockwaveColor);
     addParticle(window.innerWidth / 2, window.innerHeight / 2, "💥 필살기!!", "#ffcc00");
+    setAttackTick(t => t + 1);
     const dmg = 40 + Math.floor(Math.random() * 20);
     setHp(h => {
       const newHp = Math.max(0, h - dmg);
@@ -1025,11 +1029,11 @@ export default function App() {
         @keyframes ultimate { 0%{transform:scale(1);}25%{transform:scale(1.6) rotate(-10deg);filter:brightness(5);}75%{transform:scale(0.7) rotate(10deg);}100%{transform:scale(1);} }
         @keyframes skillPulse { 0%,100%{box-shadow:0 0 0 0 #ffcc0066;}50%{box-shadow:0 0 0 10px transparent;} }
         @keyframes bgbeat { 0%,100%{opacity:.5;}50%{opacity:1;} }
-        @keyframes wsFist   { 0%{transform:translate(-50%,80px) scale(0.6) rotate(-15deg);opacity:.9;} 40%{transform:translate(-50%,-22px) scale(2.7) rotate(5deg);opacity:1;} 100%{transform:translate(-50%,-60px) scale(1.2) rotate(15deg);opacity:0;} }
-        @keyframes wsHammer { 0%{transform:translate(-50%,-110px) scale(0.7) rotate(-80deg);opacity:.9;} 45%{transform:translate(-50%,-18px) scale(2.5) rotate(12deg);opacity:1;} 100%{transform:translate(-50%,28px) scale(0.8) rotate(22deg);opacity:0;} }
-        @keyframes wsKnife  { 0%{transform:translate(-130%,-130%) scale(0.6) rotate(-50deg);opacity:.9;} 40%{transform:translate(-50%,-50%) scale(2.2) rotate(5deg);opacity:1;} 100%{transform:translate(60%,60%) scale(0.6) rotate(60deg);opacity:0;} }
-        @keyframes wsGun    { 0%{transform:translate(-50%,55px) scale(1.6);opacity:1;} 25%{transform:translate(-50%,8px) scale(2.9);opacity:1;} 55%{transform:translate(-50%,28px) scale(2.1);opacity:.7;} 100%{transform:translate(-50%,68px) scale(1.2);opacity:0;} }
-        @keyframes wsFire   { 0%{transform:translate(-50%,95px) scale(0.5);opacity:.8;} 45%{transform:translate(-50%,-28px) scale(2.8);opacity:1;} 100%{transform:translate(-50%,-75px) scale(1.1);opacity:0;} }
+        @keyframes fpsFist   { 0%{transform:translateX(-50%) rotate(-8deg) translateY(0px) scale(1);} 15%{transform:translateX(-50%) rotate(-12deg) translateY(-8px) scale(1.05);} 45%{transform:translateX(-50%) rotate(4deg) translateY(-52px) scale(1.35);} 70%{transform:translateX(-50%) rotate(2deg) translateY(-30px) scale(1.15);} 100%{transform:translateX(-50%) rotate(-8deg) translateY(0px) scale(1);} }
+        @keyframes fpsHammer { 0%{transform:translateX(-50%) rotate(-5deg) translateY(0px) scale(1);} 20%{transform:translateX(-50%) rotate(-55deg) translateY(-30px) scale(0.95);} 50%{transform:translateX(-50%) rotate(12deg) translateY(-70px) scale(1.4);} 65%{transform:translateX(-50%) rotate(18deg) translateY(-20px) scale(1.1);} 100%{transform:translateX(-50%) rotate(-5deg) translateY(0px) scale(1);} }
+        @keyframes fpsKnife  { 0%{transform:rotate(-30deg) translateY(0px) scale(1);} 20%{transform:rotate(-45deg) translateY(8px) scale(0.9);} 40%{transform:rotate(-10deg) translateY(-55px) scale(1.3);} 60%{transform:rotate(-15deg) translateY(-25px) scale(1.1);} 100%{transform:rotate(-30deg) translateY(0px) scale(1);} }
+        @keyframes fpsGun    { 0%{transform:rotate(-8deg) translateY(0px) scale(1);} 12%{transform:rotate(-12deg) translateY(-28px) scale(1.08);} 28%{transform:rotate(-6deg) translateY(-12px) scale(1.04);} 55%{transform:rotate(-9deg) translateY(-4px) scale(1.01);} 100%{transform:rotate(-8deg) translateY(0px) scale(1);} }
+        @keyframes fpsFire   { 0%{transform:translateX(-50%) rotate(0deg) translateY(0px) scale(1);} 25%{transform:translateX(-50%) rotate(-8deg) translateY(10px) scale(0.85);} 50%{transform:translateX(-50%) rotate(10deg) translateY(-60px) scale(1.5);} 70%{transform:translateX(-50%) rotate(5deg) translateY(-30px) scale(1.2);} 100%{transform:translateX(-50%) rotate(0deg) translateY(0px) scale(1);} }
         @keyframes rdpop    { 0%{transform:scale(.82) translateY(18px);opacity:0;} 100%{transform:scale(1) translateY(0);opacity:1;} }
         .rdmodal { position:fixed; inset:0; background:#000d; z-index:400; display:flex; align-items:center; justify-content:center; padding:20px; }
         .rdbox { background:#0b0b1c; border:2px solid #06d6a055; border-radius:24px; padding:28px 22px 22px; width:100%; max-width:340px; animation:rdpop .3s ease-out; text-align:center; }
@@ -1069,7 +1073,7 @@ export default function App() {
         .vnamebadge { background:#ff4d6d18; border:2px solid #ff4d6d44; border-radius:20px; padding:5px 18px; color:#ff9500; font-family:'Black Han Sans',sans-serif; font-size:.95rem; white-space:nowrap; }
         .vtraitbadge { color:#444; font-size:.75rem; }
         .combo { position:absolute; top:16px; right:16px; font-family:'Black Han Sans',sans-serif; font-size:${combo > 10 ? "2.2rem" : "1.5rem"}; color:${combo > 10 ? "#ffcc00" : "#ff9500"}; text-shadow:${combo > 10 ? "0 0 24px #ffcc00" : "0 0 12px #ff9500"}; opacity:${combo > 1 ? 1 : 0}; transition:all .12s; }
-        .ultbtn { position:absolute; bottom:16px; right:16px; background:${ultimateReady ? "linear-gradient(135deg,#ffcc00,#ff9500)" : "#1a1a2e"}; border:${ultimateReady ? "none" : "2px solid #333"}; border-radius:14px; padding:10px 16px; color:${ultimateReady ? "#111" : "#444"}; font-family:'Black Han Sans',sans-serif; font-size:.95rem; cursor:${ultimateReady ? "pointer" : "not-allowed"}; transition:all .2s; ${ultimateReady ? "animation:skillPulse .8s infinite; box-shadow:0 0 20px #ffcc0066;" : ""} }
+        .ultbtn { position:absolute; bottom:16px; left:16px; background:${ultimateReady ? "linear-gradient(135deg,#ffcc00,#ff9500)" : "#1a1a2e"}; border:${ultimateReady ? "none" : "2px solid #333"}; border-radius:14px; padding:10px 16px; color:${ultimateReady ? "#111" : "#444"}; font-family:'Black Han Sans',sans-serif; font-size:.95rem; cursor:${ultimateReady ? "pointer" : "not-allowed"}; transition:all .2s; ${ultimateReady ? "animation:skillPulse .8s infinite; box-shadow:0 0 20px #ffcc0066;" : ""} }
         .taphint { position:absolute; bottom:20px; left:50%; transform:translateX(-50%); color:#333; font-size:.75rem; letter-spacing:2px; }
         .defeatmsg { position:absolute; bottom:28px; left:50%; transform:translateX(-50%); color:#06d6a0; font-family:'Black Han Sans',sans-serif; font-size:1.1rem; text-shadow:0 0 20px #06d6a0; white-space:nowrap; }
         .botbar { padding:10px 18px 20px; width:100%; display:flex; justify-content:center; z-index:10; }
@@ -1093,7 +1097,6 @@ export default function App() {
 
       {particles.map(p => <FloatingText key={p.id} {...p} />)}
       {shockwaves.map(s => <Shockwave key={s.id} {...s} />)}
-      {weaponStrikes.map(w => <WeaponStrike key={w.id} {...w} />)}
 
       <div className="gw">
         <div className="topbar">
@@ -1141,6 +1144,12 @@ export default function App() {
           {!defeated && <div className="taphint">TAP TO ATTACK</div>}
           {defeated && !choiceEvent && <div className="defeatmsg">💥 격파!! 다음 빌런 등장...</div>}
         </div>
+
+        <FPSWeaponView
+          weaponId={activeWeapon.id}
+          emoji={activeWeapon.emoji}
+          attackTick={attackTick}
+        />
 
         <div className="botbar">
           <button className="qbtn" onClick={() => { audioEngine.stopBGM(); setScreen("setup"); }}>← 빌런 재설정</button>
