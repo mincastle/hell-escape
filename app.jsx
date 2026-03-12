@@ -332,8 +332,8 @@ function Shockwave({ x, y, big, color }) {
 const FPS_CFG = {
   fist:   { anim:"fpsFist",   dur:280, size:"5.5rem", bottom:"72px", left:"50%",  right:"auto", restTransform:"translateX(-50%) rotate(-8deg)"  },
   hammer: { anim:"fpsHammer", dur:360, size:"5rem",   bottom:"68px", left:"50%",  right:"auto", restTransform:"translateX(-50%) rotate(-5deg)"  },
-  knife:  { anim:"fpsKnife",  dur:240, size:"5rem",   bottom:"76px", left:"auto", right:"18px", restTransform:"rotate(-30deg)"                  },
-  gun:    { anim:"fpsGun",    dur:220, size:"5.5rem", bottom:"72px", left:"auto", right:"14px", restTransform:"rotate(-8deg)"                   },
+  knife:  { anim:"fpsKnife",  dur:240, size:"5rem",   bottom:"76px", left:"50%",  right:"auto", restTransform:"translateX(-50%) rotate(-30deg)"  },
+  gun:    { anim:"fpsGun",    dur:220, size:"5.5rem", bottom:"72px", left:"50%",  right:"auto", restTransform:"translateX(-50%) rotate(-8deg)"  },
   fire:   { anim:"fpsFire",   dur:320, size:"5.5rem", bottom:"72px", left:"50%",  right:"auto", restTransform:"translateX(-50%) scale(1)"       },
 };
 
@@ -1031,8 +1031,8 @@ export default function App() {
         @keyframes bgbeat { 0%,100%{opacity:.5;}50%{opacity:1;} }
         @keyframes fpsFist   { 0%{transform:translateX(-50%) rotate(-8deg) translateY(0px) scale(1);} 15%{transform:translateX(-50%) rotate(-12deg) translateY(-8px) scale(1.05);} 45%{transform:translateX(-50%) rotate(4deg) translateY(-52px) scale(1.35);} 70%{transform:translateX(-50%) rotate(2deg) translateY(-30px) scale(1.15);} 100%{transform:translateX(-50%) rotate(-8deg) translateY(0px) scale(1);} }
         @keyframes fpsHammer { 0%{transform:translateX(-50%) rotate(-5deg) translateY(0px) scale(1);} 20%{transform:translateX(-50%) rotate(-55deg) translateY(-30px) scale(0.95);} 50%{transform:translateX(-50%) rotate(12deg) translateY(-70px) scale(1.4);} 65%{transform:translateX(-50%) rotate(18deg) translateY(-20px) scale(1.1);} 100%{transform:translateX(-50%) rotate(-5deg) translateY(0px) scale(1);} }
-        @keyframes fpsKnife  { 0%{transform:rotate(-30deg) translateY(0px) scale(1);} 20%{transform:rotate(-45deg) translateY(8px) scale(0.9);} 40%{transform:rotate(-10deg) translateY(-55px) scale(1.3);} 60%{transform:rotate(-15deg) translateY(-25px) scale(1.1);} 100%{transform:rotate(-30deg) translateY(0px) scale(1);} }
-        @keyframes fpsGun    { 0%{transform:rotate(-8deg) translateY(0px) scale(1);} 12%{transform:rotate(-12deg) translateY(-28px) scale(1.08);} 28%{transform:rotate(-6deg) translateY(-12px) scale(1.04);} 55%{transform:rotate(-9deg) translateY(-4px) scale(1.01);} 100%{transform:rotate(-8deg) translateY(0px) scale(1);} }
+        @keyframes fpsKnife  { 0%{transform:translateX(-50%) rotate(-30deg) translateY(0px) scale(1);} 20%{transform:translateX(-50%) rotate(-45deg) translateY(8px) scale(0.9);} 40%{transform:translateX(-50%) rotate(-10deg) translateY(-55px) scale(1.3);} 60%{transform:translateX(-50%) rotate(-15deg) translateY(-25px) scale(1.1);} 100%{transform:translateX(-50%) rotate(-30deg) translateY(0px) scale(1);} }
+        @keyframes fpsGun    { 0%{transform:translateX(-50%) rotate(-8deg) translateY(0px) scale(1);} 12%{transform:translateX(-50%) rotate(-12deg) translateY(-28px) scale(1.08);} 28%{transform:translateX(-50%) rotate(-6deg) translateY(-12px) scale(1.04);} 55%{transform:translateX(-50%) rotate(-9deg) translateY(-4px) scale(1.01);} 100%{transform:translateX(-50%) rotate(-8deg) translateY(0px) scale(1);} }
         @keyframes fpsFire   { 0%{transform:translateX(-50%) rotate(0deg) translateY(0px) scale(1);} 25%{transform:translateX(-50%) rotate(-8deg) translateY(10px) scale(0.85);} 50%{transform:translateX(-50%) rotate(10deg) translateY(-60px) scale(1.5);} 70%{transform:translateX(-50%) rotate(5deg) translateY(-30px) scale(1.2);} 100%{transform:translateX(-50%) rotate(0deg) translateY(0px) scale(1);} }
         @keyframes rdpop    { 0%{transform:scale(.82) translateY(18px);opacity:0;} 100%{transform:scale(1) translateY(0);opacity:1;} }
         .rdmodal { position:fixed; inset:0; background:#000d; z-index:400; display:flex; align-items:center; justify-content:center; padding:20px; }
